@@ -45,8 +45,8 @@ Use `nullptr` instead of `NULL` OR `0`. due to type system and inference and typ
 you can do `if (auto n = v.size(); n!=0)` which is equal to `if (auto n = v.size())`
 
 references and pointers differ, here is a great example:
-![[Pasted image 20230929194224.png]]
-![[Pasted image 20230929194237.png]]
+![how-pointers-work](./images/pointers.png)
+![how-references-work](./images/references.png)
 remember, we don't need to use `*` to get the value in references, we are working with the values themselves here.
 *To access the value pointed to by a pointer, you use `∗`; that is automatically (implicitly) done for a reference.*
 
@@ -200,7 +200,7 @@ We can tag a function with `const` to show that they are not going to change the
 create `constructor`s and `destructor`s in order to avoid naked `new` and `delete` in code. naked `new` and `delete` are bad practices.
 
 This is how function calls are manages for derived classes.
-![[Pasted image 20231007001837.png]]
+![virtual-tables](./images/vtbl.png)
 
 This virtual call mechanism can be made almost as efficient as the ‘‘normal function call’’
 mechanism (within 25%). Its space overhead is one pointer in each object of a class with virtual
