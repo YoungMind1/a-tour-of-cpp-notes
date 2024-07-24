@@ -1,3 +1,13 @@
+# Who is This Document For?
+These notes are most suited for those who are already programming in another programming language (not every basic thing is covered)
+# Table of Content
+- [Chapter 1 | Basics](#chapter-1--basics)
+- [Chapter 2 | User-Defined Types](#chapter-2--user-defined-types)
+- [Chapter 3 | Modularity](#chapter-3--modularity)
+- [Chapter 4 | Error Handling](#chapter-4--error-handling)
+- [Chapter 5 | Classes](#chapter-5--classes)
+- [Chapter 6 | Essential Operations](#chapter-6--essential-operations)
+
 # Chapter 1 | Basics
 ## Function Types
 ```cpp
