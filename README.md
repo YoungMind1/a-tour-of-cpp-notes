@@ -7,6 +7,9 @@ These notes are most suited for those who are already programming in another pro
 - [Chapter 4 | Error Handling](#chapter-4--error-handling)
 - [Chapter 5 | Classes](#chapter-5--classes)
 - [Chapter 6 | Essential Operations](#chapter-6--essential-operations)
+- [Chapter 7 | Templates](#chapter-7--templates)
+- [Chapter 8 | Concepts and Generic Programming](#chapter-8--concepts-and-generic-programming)
+- [Chapter 9 | Library Overview](#chapter-9--library-overview)
 
 # Chapter 1 | Basics
 ## Function Types
@@ -296,3 +299,207 @@ public:
 ```
 
 Use explicit type conversions in constructors to eliminate confusion.
+
+# Chapter 7 | Templates
+
+C++'s equivalent to blanket types in rust is concepts.
+It sets some constraint for the templates; for example T should be copyable
+
+### Value Template Arguments
+In addition to type arguments, a template can take value arguments. For example: 
+```cpp
+template<typename T, int N>
+struct Buffer {
+	constexpr int size() { return N; }
+	T elem[N];
+	// ...
+};
+```
+In the above example we have created a buffer structs which is allocated on the stack!
+
+In c++ to write a proper string we have to add a `s` suffix to the end of the literal: `"Hello"s`. or the compiler might consider the `const *char` type for it.
+
+You cannot use template functions on virtual functions, because the compiler doesn't know all the variations of that function to create a `vtbl` for.
+
+### Function Objects
+C++ has somehow a first-class citizen support for functions, they are called function objects:
+
+```cpp
+template<typename T>
+class Less_than {
+	const T val; // value to compare against
+public:
+	Less_than(const T& v) :val{v} { }
+	bool operator()(const T& x) const { return x<val; } // call operator
+};
+```
+
+### Lambda Functions
+`[&](int a){ return a<x; }` this is a lambda function in c++. the `[&]` is a *capture list* it says that all local names used in the lambda expression are going to be accessed via a reference. `[=]` means all names are accessed via copy/value.
+
+### Finally
+In c++ we have to deal with a lot of old code and c style codes. We can do the following to ensure the safety of our program (tricking the compiler to use RAII):
+```cpp
+template <class F>
+struct Final_action {
+	explicit Final_action(F f) :act(f) {}
+	˜Final_action() { act(); }
+	F act;
+};
+
+template <class F>
+[[nodiscard]] auto finally(F f)
+{
+return Final_action{f};
+}
+
+void old_style(int n)
+{
+	void∗ p = malloc(n∗sizeof(int)); // C-style
+	auto act = finally([&]{free(p);}); // call the lambda upon scope exit
+	// ...
+} // p is implicitly freed upon scope exit
+```
+In the above code we are putting the required destructor functions into a finally function, that function returns a object in which we have set the destructor functions as its destructor! so when `Final_acion` goes out of scope, the necessary functions are going to be called!
+
+### Compile-time `if`
+```cpp
+template<typename T>
+void update(T& target)
+{
+	// ...
+	if constexpr(is_trivially_copyable_v<T>)
+		simple_and_fast(target); // for "plain old data"
+	else
+		slow_and_safe(target); // for more complex types
+	// ...
+	}
+```
+
+# Chapter 8 | Concepts and Generic Programming
+### Concept-based overloading
+```cpp
+template<forward_iterator Iter>
+void advance(Iter p, int n) // move p n elements forward
+{
+	while (n--)
+		++p; // a forward iterator has ++, but not + or +=
+}
+
+template<random_access_iterator Iter>
+void advance(Iter p, int n) // move p n elements forward
+{
+	p+=n; // a random-access iterator has +=
+}
+
+void user(vector<int>::iterator vip, list<string>::iterator lsp)
+{
+	advance(vip,10); // uses the fast advance()
+	advance(lsp,10); // uses the slow advance()
+}
+```
+
+### Requirement Clauses
+You can specify c++ expressions in the definition of the concept/requirement itself, if the expression is valid code for a given usage of that template, it compiles, otherwise it does not compile.
+*requires-expressions* are like raw assembly codes, they should not be visible in the everyday code, we should only see them in the definition of the concepts themselves.
+```cpp
+template<forward_iterator Iter>
+	requires requires(Iter p, int i) { p[i]; p+i; } // Iter has subscripting and integer addition
+void advance(Iter p, int n) // move p n elements forward
+{
+	p+=n;
+}
+```
+
+### Defining Concepts
+```cpp
+template<typename T, typename T2 =T>
+concept Equality_comparable =
+	requires (T a, T2 b) {
+		{ a == b } -> Boolean; // compare a T to a T2 with ==
+		{ a != b } -> Boolean; // compare a T to a T2 with !=
+		{ b == a } -> Boolean; // compare a T2 to a T with ==
+		{ b != a } -> Boolean; // compare a T2 to a T with !=
+	};
+```
+It is mostly self explanatory `T2 =T` means that if we don't provide a second template argument, `T2` will be the same as `T`
+
+### Concepts and `auto`
+`auto` parameters are kinda like very weak concepts! you can strengthen them by preceding them by a concept!
+```cpp
+auto twice(Arithmetic auto x) { return x+x; } // just for numbers
+auto thrice(auto x) { return x+x+x; } // for anything with a +
+```
+
+> Concepts > Only types
+
+
+*Good abstractions are carefully grown from concrete examples. It is not a good idea to try to ‘‘abstract’’ by trying to prepare for every conceivable need and technique; in that direction lies inelegance and code bloat*
+
+### Variadic Templates
+You have seen them in other languages, there is how you can achieve them in C++
+```cpp
+template<typename T>
+concept Printable = requires(T t) { std::cout << t; } // just one operation!
+
+void print()
+{
+	// what we do for no arguments: nothing
+}
+
+template<Printable T, Printable... Tail>
+void print(T head, Tail... tail)
+{
+	cout << head << ' '; // first, what we do for the head
+	print(tail...); // then, what we do for the tail
+}
+```
+
+You can eliminate the need of the empty call via a compile time if check:
+```cpp
+template<Printable T, Printable... Tail>
+void print(T head, Tail... tail)
+{
+	cout << head << ' ';
+	if constexpr(sizeof...(tail)> 0)
+		print(tail...);
+}
+
+```
+
+You can achieve the same via *folds*
+
+### Fold Expressions
+You have *left folds* and *right folds*.
+```cpp
+template<Number... T>
+int right_fold(T... v) // Wraps from the highest index
+{
+	return (v + ... + 0); // add all elements of v starting with 0
+}
+
+template<Number... T>
+int left_fold(T... v) // Starts with loweset index
+{
+	return (0 + ... + v); // add all elements of v to 0
+}
+```
+
+### Forward Argument
+If you want to pass down the variadic templates to another function with low run-time overhead you can use `std::forward`
+```cpp
+template<concepts::InputTransport Transport>
+class InputChannel {
+public:
+	// ...
+	InputChannel(Transport::Args&&... transportArgs)
+		: _transport(std::forward<TransportArgs>(transportArgs)...)
+	{}
+	// ...
+	Transport _transport;
+};
+```
+
+# Chapter 9 | Library Overview
+nothing!
+
